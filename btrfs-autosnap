@@ -1,0 +1,65 @@
+#!/bin/bash
+retain=8
+
+while [ $# -gt 0 ]
+do
+    case "$1" in
+        -c)
+            if ! test $2 -gt 0 2>/dev/null; then
+                >&2 echo "The $1 parameter must be a positive integer"
+                exit 129
+            fi
+            retain=$2
+            shift 2
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+if [ "$#" -ne 1 ]; then
+   echo "No subvolume is supplied."
+   exit 1
+fi
+
+fs="/mnt/hdd1_btrfs"
+target=$1
+
+create() {
+    new_snap="$fs/snapshots/$target/@$target"_autosaved_`date +%Y.%m.%d_%H.%M.%S`
+    latest_symlink="$fs/snapshots/$target/$target"_autosaved_latest
+    latest_snap=$(readlink "$latest_symlink")
+
+    if [ -d "$latest_snap" ]; then
+        gen_id=`btrfs sub find-new $latest_snap 9999999 | cut -d " " -f 4`
+        count=`btrfs sub find-new $fs/@$target $gen_id | cut -d " " -f 17-1000 | sed '/^$/d'| wc -l`
+    else #first time
+        count=1
+    fi
+
+    if [[ $count > '0' ]]; then
+        btrfs subvolume snapshot -r $fs/@$target $new_snap
+        rm $latest_symlink 2> /dev/null
+        ln -s $new_snap $latest_symlink
+    else
+        echo "No files changed, skipping creating of a new snapshot"
+    fi
+}
+
+delete() {
+    cnt=`btrfs subvolume list -s -g -o $fs | grep $target | grep autosaved | sort -n -k 4 | wc -l`
+    if [ $cnt -gt $retain ] ; then
+        echo "Delete old snapshots"
+        btrfs subvolume list -s -g -o $fs | grep $target | grep autosaved | sort -n -k 4 | head -n $(($cnt-$retain)) | awk '{print $NF}' \
+            | while read s; do
+                btrfs sub del $fs/$s
+        done
+        
+    fi
+
+
+}
+
+create
+delete
