@@ -1,7 +1,7 @@
 # btrfs-auto-snapshot
 
-Take snapshot(if there is change) and retains up to latest 8 snapshots.
-> not detect all types of changes, for example deleted files.
+Take snapshot(if there is change) and retains snapshots.
+> not detect all types of changes, for example: deleted files.
 
 ### Structure of btrfs should be
 
