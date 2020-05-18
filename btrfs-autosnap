@@ -1,5 +1,5 @@
 #!/bin/bash
-retain=8
+retain=99
 
 while [ $# -gt 0 ]
 do
